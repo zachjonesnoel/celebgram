@@ -6,6 +6,7 @@ In this demo, the [SAM Template](./template.yaml) shows how the State Machines c
 #How to try it?
 Clone the project 
 ```
+git clone https://github.com/zachjonesnoel/celebgram.git
 ```
 
 With [AWS SAM](https://aws.amazon.com/serverless/sam/) CLI pre-installed, build the SAM app with 
