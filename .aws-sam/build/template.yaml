@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Sample SAM Template demonstrating Step Functions SDK integrations
+
+  '
+Resources:
+  CelebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+  CustomerManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: rekognition:RecognizeCelebrities
+          Resource: '*'
+  RecognizeCelebrityStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: ../../statemachine/recognizeCelebrities.asl.json
+      DefinitionSubstitutions:
+        DDBTable:
+          Ref: CelebritiesTable
+      Policies:
+      - Ref: CustomerManagedPolicy
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CelebritiesTable
+      - S3ReadPolicy:
+          BucketName:
+            Ref: CelebBucket
+      - SNSCrudPolicy:
+          TopicName: zachjonesnoel.com
+      Events:
+        StateChange:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: default
+            Pattern:
+              source:
+              - aws.s3
+              detail-type:
+              - Object Created
+              detail:
+                bucket:
+                  name:
+                  - Ref: CelebBucket
+  CelebritiesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: pk
+        AttributeType: S
+      - AttributeName: sk
+        AttributeType: S
+      KeySchema:
+      - AttributeName: pk
+        KeyType: HASH
+      - AttributeName: sk
+        KeyType: RANGE
+      GlobalSecondaryIndexes:
+      - IndexName: sk-index
+        KeySchema:
+        - AttributeName: sk
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+  GetItemsStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: ../../statemachine/getItems.asl.json
+      DefinitionSubstitutions:
+        DDBTable:
+          Ref: CelebritiesTable
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CelebritiesTable
+Outputs:
+  CelebBucket:
+    Description: S3 bucket name
+    Value:
+      Ref: CelebBucket
+  RecognizeCelebrityStateMachine:
+    Description: Recognize Celebrity States Machine
+    Value:
+      Ref: RecognizeCelebrityStateMachine
+  CelebritiesTable:
+    Description: Celebrities DynamoDB table
+    Value:
+      Ref: CelebritiesTable
+  GetItemsStateMachine:
+    Description: Get Celebrities State Machine
+    Value:
+      Ref: GetItemsStateMachine
