@@ -1,0 +1,61 @@
+{
+    "Comment": "State machine to recognize celebrities and write into DynamoDB",
+    "StartAt": "RecognizeCelebrities",
+    "States": {
+      "RecognizeCelebrities": {
+        "Type": "Task",
+        "Parameters": {
+          "Image": {
+            "S3Object": {
+              "Bucket.$": "$.detail.bucket.name",
+              "Name.$": "$.detail.object.key"
+            }
+          }
+        },
+        "Resource": "arn:aws:states:::aws-sdk:rekognition:recognizeCelebrities",
+        "Next": "ProcessEachCeleb",
+        "ResultPath": "$.response.celebrities"
+      },
+      "ProcessEachCeleb": {
+        "Type": "Map",
+        "Iterator": {
+          "StartAt": "DynamoDB PutItem",
+          "States": {
+            "DynamoDB PutItem": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
+              "Parameters": {
+                "TableName": "${DDBTable}",
+                "Item": {
+                  "pk": {
+                    "S.$": "States.UUID()"
+                  },
+                  "sk": {
+                    "S.$": "$.DocumentName"
+                  },
+                  "CelebrityName": {
+                    "S.$": "$.CelebJSON.Name"
+                  },
+                  "MatchConfidence": {
+                    "N.$": "States.Format('{}',$.CelebJSON.MatchConfidence)"
+                  },
+                  "Urls": {
+                    "S.$": "States.ArrayGetItem($.CelebJSON.Urls,0)"
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        "ItemsPath": "$.response.celebrities.CelebrityFaces",
+        "Parameters": {
+          "CelebIndex.$": "$$.Map.Item.Index",
+          "CelebJSON.$": "$$.Map.Item.Value",
+          "DocumentName.$": "$.detail.object.key"
+        },
+        "ResultPath": "$.response.items",
+        "End": true
+      }
+    }
+  }

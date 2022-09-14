@@ -1,0 +1,25 @@
+{
+    "Comment": "A description of my state machine",
+    "StartAt": "Query",
+    "States": {
+      "Query": {
+        "Type": "Task",
+        "End": true,
+        "Parameters": {
+          "TableName": "${DDBTable}",
+          "IndexName": "sk-index",
+          "KeyConditionExpression": "#sk = :sk",
+          "ExpressionAttributeNames": {
+            "#sk": "sk"
+          },
+          "ExpressionAttributeValues": {
+            ":sk": {
+              "S.$": "$.sk"
+            }
+          }
+        },
+        "Resource": "arn:aws:states:::aws-sdk:dynamodb:query",
+        "ResultPath": "$.response"
+      }
+    }
+  }
